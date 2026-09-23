@@ -63,9 +63,8 @@ Other scripts: `npm test` (unit tests), `npm run lint`, `npm run typecheck`, `np
    npx wrangler secret put CALCOM_API_KEY
    npx wrangler secret put STRIPE_SECRET_KEY
    npx wrangler secret put RESEND_API_KEY
-   npx wrangler secret put EMAIL_FROM           # e.g. Ravi Raman <portal@ramancoaching.com>
    ```
-3. **Check the `vars` in `wrangler.jsonc`**, especially `BETTER_AUTH_URL`, which must be the exact public URL of the portal (the placeholder is `https://portal.ramancoaching.com`). To serve the portal from your own domain, add it under Workers → your Worker → Settings → Domains & Routes.
+3. **Check the `vars` in `wrangler.jsonc`**, especially `BETTER_AUTH_URL`, which must be the exact public URL of the portal (currently `https://client-dashboard.rraman.workers.dev`). To serve the portal from your own domain, add it under Workers → your Worker → Settings → Domains & Routes.
 4. **Deploy and create your admin account:**
    ```bash
    npm run deploy
