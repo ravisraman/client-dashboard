@@ -1,0 +1,91 @@
+"use client";
+
+import { useActionState } from "react";
+import type { FormState } from "./actions";
+
+type Values = {
+  name?: string | null;
+  email?: string | null;
+  programName?: string | null;
+  programStart?: string | null;
+  programEnd?: string | null;
+  stripeCustomerId?: string | null;
+};
+
+export function ClientForm({
+  action,
+  initial = {},
+  submitLabel,
+  clearOnSuccess = false,
+}: {
+  action: (prev: FormState, formData: FormData) => Promise<FormState>;
+  initial?: Values;
+  submitLabel: string;
+  /** For the "add" form: start empty again after a successful save instead of showing the saved values. */
+  clearOnSuccess?: boolean;
+}) {
+  const [state, formAction, pending] = useActionState(action, undefined);
+  const v: Values = state?.ok && clearOnSuccess ? {} : (state?.values ?? initial);
+
+  return (
+    <form action={formAction} className="grid gap-3 sm:grid-cols-2">
+      <Field label="Full name" name="name" defaultValue={v.name} required />
+      <Field
+        label="Email (used to sign in and to match Cal.com bookings)"
+        name="email"
+        type="email"
+        defaultValue={v.email}
+        required
+      />
+      <Field label="Program name (optional)" name="programName" defaultValue={v.programName} />
+      <Field
+        label="Stripe customer ID (optional, otherwise matched by email)"
+        name="stripeCustomerId"
+        defaultValue={v.stripeCustomerId}
+        placeholder="cus_…"
+      />
+      <Field label="Program start date" name="programStart" type="date" defaultValue={v.programStart} />
+      <Field label="Program end date" name="programEnd" type="date" defaultValue={v.programEnd} />
+      <div className="flex items-center gap-3 sm:col-span-2">
+        <button className="btn-primary" disabled={pending}>
+          {pending ? "Saving…" : submitLabel}
+        </button>
+        {state?.error && <p className="text-sm text-accent">{state.error}</p>}
+        {state?.ok && <p className="text-sm text-ok">Saved.</p>}
+      </div>
+    </form>
+  );
+}
+
+function Field({
+  label,
+  name,
+  type = "text",
+  defaultValue,
+  required,
+  placeholder,
+}: {
+  label: string;
+  name: string;
+  type?: string;
+  defaultValue?: string | null;
+  required?: boolean;
+  placeholder?: string;
+}) {
+  return (
+    <div>
+      <label className="label" htmlFor={name}>
+        {label}
+      </label>
+      <input
+        className="input"
+        id={name}
+        name={name}
+        type={type}
+        defaultValue={defaultValue ?? ""}
+        required={required}
+        placeholder={placeholder}
+      />
+    </div>
+  );
+}

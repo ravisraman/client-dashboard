@@ -1,0 +1,55 @@
+{
+  "name": "client-dashboard",
+  "version": "1.0.0",
+  "description": "Coaching client portal: Cal.com appointments, program dates, Stripe billing, and an admin report.",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "admin:create": "tsx scripts/create-admin.ts",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local",
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ravisraman/client-dashboard.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ravisraman/client-dashboard/issues"
+  },
+  "homepage": "https://github.com/ravisraman/client-dashboard#readme",
+  "dependencies": {
+    "@opennextjs/cloudflare": "^1.20.6",
+    "better-auth": "^1.7.5",
+    "drizzle-orm": "^0.45.3",
+    "next": "^16.3.6",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "resend": "^6.28.1",
+    "server-only": "^0.0.1",
+    "stripe": "^22.6.2",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@types/node": "^26.6.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "drizzle-kit": "^0.31.11",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.3.6",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.15",
+    "typescript": "^6.0.3",
+    "vitest": "^5.0.1",
+    "wrangler": "^4.137.0"
+  },
+  "private": true
+}

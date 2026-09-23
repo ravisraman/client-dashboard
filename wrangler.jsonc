@@ -1,0 +1,27 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "client-dashboard",
+  "main": ".open-next/worker.js",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+  "assets": { "directory": ".open-next/assets", "binding": "ASSETS" },
+  "observability": { "enabled": true },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "client-dashboard",
+      // Replace with the id printed by `npx wrangler d1 create client-dashboard`.
+      "database_id": "00000000-0000-0000-0000-000000000000",
+      "migrations_dir": "drizzle"
+    }
+  ],
+  // Non-secret settings. Secrets (API keys) are set with `npx wrangler secret put NAME`.
+  "vars": {
+    "BETTER_AUTH_URL": "https://portal.ramancoaching.com",
+    "BRAND_NAME": "Ravi Raman",
+    "FOOTER_NAME": "Raman Coaching",
+    "ADMIN_TIME_ZONE": "America/Chicago",
+    "CHANGE_CUTOFF_HOURS": "24",
+    "BOOKING_URL": "https://cal.com/raviraman"
+  }
+}

@@ -1,0 +1,149 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens mirror raviraman.com (paper/sand/ink palette, red accent,
+ * lotus brand colours; EB Garamond for display, Archivo for UI).
+ */
+@font-face {
+  font-family: "EB Garamond";
+  font-style: normal;
+  font-weight: 400 800;
+  font-display: swap;
+  src: url("/fonts/eb-garamond-var.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Archivo";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/archivo-var.woff2") format("woff2");
+}
+
+:root {
+  --ink: #26262a;
+  --ink-body: #3c3a37;
+  --ink-soft: #6e6a65;
+  --ink-faint: #7a746b;
+  --sand: #e9e4da;
+  --paper: #fffdf9;
+  --paper-alt: #f6f0e7;
+  --row-hover: #fbf7f0;
+  --rule: #ede6da;
+  --rule-strong: #dcd4c6;
+  --rule-soft: #f0eae0;
+  --accent: #c9301f;
+  --accent-hover: #8f2015;
+  --accent-soft: #f6c6bf;
+  --ok: #1a7f37;
+  --ok-soft: #e9f3ec;
+  --warn: #a8650a;
+  --warn-soft: #fbf0dc;
+  --brand-red: #ee4036;
+  --brand-orange: #f68c3d;
+  --brand-amber: #faaf40;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #f0ece6;
+    --ink-body: #ddd8d1;
+    --ink-soft: #a49d94;
+    --ink-faint: #8a837b;
+    --sand: #14130f;
+    --paper: #1b1a17;
+    --paper-alt: #232019;
+    --row-hover: #262319;
+    --rule: #322e27;
+    --rule-strong: #3a352d;
+    --rule-soft: #2a2721;
+    --accent: #f2705c;
+    --accent-hover: #f8968a;
+    --accent-soft: #4a251f;
+    --ok: #5dd47f;
+    --ok-soft: #1b2a1f;
+    --warn: #f0ab4a;
+    --warn-soft: #2c2415;
+  }
+}
+
+@theme inline {
+  --font-serif: "EB Garamond", Georgia, serif;
+  --font-sans: "Archivo", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --color-ink: var(--ink);
+  --color-ink-body: var(--ink-body);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-sand: var(--sand);
+  --color-paper: var(--paper);
+  --color-paper-alt: var(--paper-alt);
+  --color-row-hover: var(--row-hover);
+  --color-rule: var(--rule);
+  --color-rule-strong: var(--rule-strong);
+  --color-rule-soft: var(--rule-soft);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-brand-red: var(--brand-red);
+  --color-brand-orange: var(--brand-orange);
+  --color-brand-amber: var(--brand-amber);
+}
+
+@layer base {
+  body {
+    @apply bg-sand font-sans text-ink-body antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-serif font-normal tracking-tight text-ink;
+  }
+
+  a {
+    @apply hover:text-accent-hover;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+}
+
+/* The page "sheet": a paper panel on the sand background, as on raviraman.com. */
+@utility sheet {
+  @apply mx-auto flex min-h-screen w-full max-w-[1180px] flex-col border-rule-strong bg-paper sm:my-7 sm:min-h-[calc(100vh-56px)] sm:border;
+}
+
+@utility card {
+  @apply border border-rule bg-paper p-5 sm:p-6;
+}
+
+@utility eyebrow {
+  @apply font-sans text-[0.6875rem] font-medium tracking-[0.18em] text-ink-soft uppercase;
+}
+
+@utility btn {
+  @apply inline-flex cursor-pointer items-center justify-center gap-2 px-5 py-2.5 font-sans text-[0.8125rem] font-medium tracking-[0.06em] uppercase transition-colors disabled:cursor-not-allowed disabled:opacity-60;
+}
+@utility btn-primary {
+  @apply btn bg-accent text-paper hover:bg-accent-hover hover:text-paper;
+}
+@utility btn-secondary {
+  @apply btn border border-rule-strong bg-paper text-ink hover:border-ink-soft hover:text-ink;
+}
+@utility btn-danger {
+  @apply btn border border-accent-soft bg-paper text-accent hover:border-accent hover:text-accent-hover;
+}
+@utility input {
+  @apply w-full border border-rule-strong bg-paper px-3 py-2 font-sans text-sm text-ink placeholder:text-ink-faint focus:border-accent focus:outline-none;
+}
+@utility label {
+  @apply mb-1 block font-sans text-xs font-medium text-ink-soft;
+}
+@utility link {
+  @apply text-accent underline decoration-accent-soft underline-offset-2 hover:text-accent-hover hover:decoration-accent-hover;
+}
