@@ -2,14 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { getDb } from "@/db";
-import { session, user } from "@/db/schema";
+import { bookingEmail, session, user } from "@/db/schema";
 import { requireAdmin } from "@/lib/session";
 
 export type ClientFormValues = Partial<
-  Record<"name" | "email" | "programName" | "programStart" | "programEnd" | "stripeCustomerId", string>
+  Record<"name" | "email" | "bookingEmails" | "programName" | "programStart" | "programEnd" | "stripeCustomerId", string>
 >;
 // On error the submitted values are returned so the form can be re-filled (React resets forms after an action).
 export type FormState = { error?: string; ok?: boolean; values?: ClientFormValues } | undefined;
@@ -29,6 +29,18 @@ const clientSchema = z
   .object({
     name: z.string().trim().min(1, "Name is required").max(200),
     email: z.email("Enter a valid email").trim().toLowerCase().max(320),
+    // One per line (or comma-separated). Bookings under these count as the client's; they can't sign in.
+    bookingEmails: z
+      .string()
+      .transform((v) => [
+        ...new Set(
+          v
+            .split(/[\s,;]+/)
+            .map((e) => e.trim().toLowerCase())
+            .filter(Boolean),
+        ),
+      ])
+      .pipe(z.array(z.email("One of the other booking emails isn't a valid email").max(320)).max(20, "Up to 20 other emails")),
     programName: z
       .string()
       .trim()
@@ -56,11 +68,39 @@ function readValues(formData: FormData): ClientFormValues {
   return {
     name: get("name"),
     email: get("email"),
+    bookingEmails: get("bookingEmails"),
     programName: get("programName"),
     programStart: get("programStart"),
     programEnd: get("programEnd"),
     stripeCustomerId: get("stripeCustomerId"),
   };
+}
+
+type Db = ReturnType<typeof getDb>;
+
+/** Returns an error message if any address already belongs to a different account. */
+async function findEmailConflict(db: Db, clientId: string | null, signIn: string, extras: string[]) {
+  const all = [signIn, ...extras];
+  const owners = await db.select({ id: user.id, email: user.email }).from(user).where(inArray(user.email, all)).all();
+  const takenLogin = owners.find((o) => o.id !== clientId);
+  if (takenLogin) return `${takenLogin.email} is already another account's sign-in email.`;
+  const extraOwners = await db
+    .select({ userId: bookingEmail.userId, email: bookingEmail.email })
+    .from(bookingEmail)
+    .where(inArray(bookingEmail.email, all))
+    .all();
+  const takenExtra = extraOwners.find((o) => o.userId !== clientId);
+  if (takenExtra) return `${takenExtra.email} is already a booking email for another client.`;
+  return null;
+}
+
+/** Replaces the client's extra booking emails (sign-in email excluded). */
+function replaceBookingEmails(db: Db, userId: string, extras: string[]) {
+  const now = new Date();
+  return [
+    db.delete(bookingEmail).where(eq(bookingEmail.userId, userId)),
+    ...extras.map((email) => db.insert(bookingEmail).values({ id: crypto.randomUUID(), userId, email, createdAt: now })),
+  ] as const;
 }
 
 export async function createClientAction(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -70,18 +110,17 @@ export async function createClientAction(_prev: FormState, formData: FormData): 
   if (!parsed.success) return { error: parsed.error.issues[0].message, values };
 
   const db = getDb();
-  const existing = await db.select({ id: user.id }).from(user).where(eq(user.email, parsed.data.email)).get();
-  if (existing) return { error: "A client with that email already exists.", values };
+  const { bookingEmails, ...fields } = parsed.data;
+  const extras = bookingEmails.filter((e) => e !== fields.email);
+  const conflict = await findEmailConflict(db, null, fields.email, extras);
+  if (conflict) return { error: conflict, values };
 
   const now = new Date();
-  await db.insert(user).values({
-    id: crypto.randomUUID(),
-    ...parsed.data,
-    role: "client",
-    emailVerified: false,
-    createdAt: now,
-    updatedAt: now,
-  });
+  const id = crypto.randomUUID();
+  await db.batch([
+    db.insert(user).values({ id, ...fields, role: "client", emailVerified: false, createdAt: now, updatedAt: now }),
+    ...replaceBookingEmails(db, id, extras),
+  ]);
   revalidatePath("/admin", "layout");
   return { ok: true };
 }
@@ -93,13 +132,6 @@ export async function updateClientAction(id: string, _prev: FormState, formData:
   if (!parsed.success) return { error: parsed.error.issues[0].message, values };
 
   const db = getDb();
-  const clash = await db
-    .select({ id: user.id })
-    .from(user)
-    .where(and(eq(user.email, parsed.data.email), ne(user.id, id)))
-    .get();
-  if (clash) return { error: "Another account already uses that email.", values };
-
   const current = await db
     .select()
     .from(user)
@@ -107,14 +139,24 @@ export async function updateClientAction(id: string, _prev: FormState, formData:
     .get();
   if (!current) return { error: "Client not found.", values };
 
-  await db
-    .update(user)
-    .set({ ...parsed.data, updatedAt: new Date() })
-    .where(eq(user.id, id));
-  // If the login email changed, sign the client out everywhere.
-  if (current.email !== parsed.data.email) await db.delete(session).where(eq(session.userId, id));
+  const { bookingEmails, ...fields } = parsed.data;
+  const emailChanged = current.email !== fields.email;
+  // Keep the old sign-in email as a booking email so past sessions stay with this client.
+  const extras = [...new Set([...bookingEmails, ...(emailChanged ? [current.email] : [])])].filter((e) => e !== fields.email);
+  const conflict = await findEmailConflict(db, id, fields.email, extras);
+  if (conflict) return { error: conflict, values };
+
+  await db.batch([
+    db
+      .update(user)
+      .set({ ...fields, updatedAt: new Date() })
+      .where(eq(user.id, id)),
+    ...replaceBookingEmails(db, id, extras),
+    // A new sign-in email signs the client out everywhere.
+    ...(emailChanged ? [db.delete(session).where(eq(session.userId, id))] : []),
+  ]);
   revalidatePath("/admin", "layout");
-  return { ok: true, values };
+  return { ok: true, values: { ...values, bookingEmails: extras.join("\n") } };
 }
 
 export async function deleteClientAction(id: string) {

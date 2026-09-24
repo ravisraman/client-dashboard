@@ -83,3 +83,18 @@ export const rateLimit = sqliteTable("rate_limit", {
   count: integer("count").notNull(),
   lastRequest: integer("last_request").notNull(),
 });
+
+// Extra email addresses a client has booked with (e.g. a previous work email).
+// Bookings under these count as the client's, but only `user.email` can sign in.
+export const bookingEmail = sqliteTable(
+  "booking_email",
+  {
+    id: text("id").primaryKey(),
+    userId: text("user_id")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    email: text("email").notNull().unique(),
+    createdAt: integer("created_at", { mode: "timestamp" }).notNull(),
+  },
+  (t) => [index("booking_email_user_id_idx").on(t.userId)],
+);

@@ -109,6 +109,11 @@ export default async function AdminReportPage({ searchParams }: { searchParams: 
                           {r.client.name}
                         </Link>
                         <div className="text-xs text-ink-soft">{r.client.email}</div>
+                        {r.client.bookingEmails?.map((e) => (
+                          <div key={e} className="text-xs text-ink-faint">
+                            + {e}
+                          </div>
+                        ))}
                       </td>
                       <td className="px-4 py-3 text-xs text-ink-soft">
                         {r.client.programStart && r.client.programEnd

@@ -19,9 +19,16 @@ export function normalizeEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
-export function isAttendee(b: BookingLike, email: string) {
-  const target = normalizeEmail(email);
-  return b.attendees.some((a) => normalizeEmail(a.email) === target);
+/** Whether any of the given emails (a client's sign-in and booking emails) attends the booking. */
+export function isAttendee(b: BookingLike, emails: string | string[]) {
+  const targets = new Set((Array.isArray(emails) ? emails : [emails]).map(normalizeEmail));
+  return b.attendees.some((a) => targets.has(normalizeEmail(a.email)));
+}
+
+/** The booking's attendee record for this client, if any. */
+export function findAttendee<A extends { email: string }>(b: { attendees: A[] }, emails: string[]): A | undefined {
+  const targets = new Set(emails.map(normalizeEmail));
+  return b.attendees.find((a) => targets.has(normalizeEmail(a.email)));
 }
 
 export function durationMinutes(b: BookingLike) {
@@ -58,7 +65,15 @@ export function dedupeByUid<T extends { uid: string }>(bookings: T[]): T[] {
   return [...seen.values()];
 }
 
-export type ClientRow = { id: string; name: string; email: string; programStart?: string | null; programEnd?: string | null };
+export type ClientRow = {
+  id: string;
+  name: string;
+  email: string;
+  /** Extra emails the client has booked with; their bookings count toward this client. */
+  bookingEmails?: string[];
+  programStart?: string | null;
+  programEnd?: string | null;
+};
 
 export type ClientReport<C extends ClientRow, B extends BookingLike> = {
   client: C;
@@ -90,16 +105,14 @@ export type Report<C extends ClientRow, B extends BookingLike> = {
  */
 export function buildReport<C extends ClientRow, B extends BookingLike>(clients: C[], bookings: B[], now: Date): Report<C, B> {
   const byEmail = new Map<string, ClientReport<C, B>>();
+  const rows: ClientReport<C, B>[] = [];
   for (const client of clients) {
-    byEmail.set(normalizeEmail(client.email), {
-      client,
-      sessions: [],
-      completed: 0,
-      upcoming: 0,
-      cancelled: 0,
-      totalSessions: 0,
-      totalMinutes: 0,
-    });
+    const row = { client, sessions: [], completed: 0, upcoming: 0, cancelled: 0, totalSessions: 0, totalMinutes: 0 };
+    rows.push(row);
+    for (const email of [client.email, ...(client.bookingEmails ?? [])]) {
+      const key = normalizeEmail(email);
+      if (!byEmail.has(key)) byEmail.set(key, row);
+    }
   }
 
   const unmatched = new Map<string, { email: string; name: string; sessions: number }>();
@@ -130,7 +143,6 @@ export function buildReport<C extends ClientRow, B extends BookingLike>(clients:
     }
   }
 
-  const rows = [...byEmail.values()];
   for (const r of rows) r.sessions.sort((a, b) => Date.parse(b.start) - Date.parse(a.start));
   rows.sort((a, b) => b.totalSessions - a.totalSessions || a.client.name.localeCompare(b.client.name));
 

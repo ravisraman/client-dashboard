@@ -5,6 +5,8 @@ import { Header } from "@/components/header";
 import { requireAdmin } from "@/lib/session";
 import { getDb } from "@/db";
 import { user } from "@/db/schema";
+import { env } from "@/lib/env";
+import { getClientEmails } from "@/lib/client-emails";
 import { deleteClientAction, updateClientAction } from "../actions";
 import { ClientForm } from "../client-form";
 import { DeleteClientButton } from "./delete-button";
@@ -20,6 +22,7 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
     .where(and(eq(user.id, id), eq(user.role, "client")))
     .get();
   if (!client) notFound();
+  const [, ...extraEmails] = await getClientEmails(client);
 
   return (
     <>
@@ -30,7 +33,12 @@ export default async function EditClientPage({ params }: { params: Promise<{ id:
         </Link>
         <section className="card">
           <h1 className="mb-4 text-3xl">{client.name}</h1>
-          <ClientForm action={updateClientAction.bind(null, client.id)} initial={client} submitLabel="Save changes" />
+          <ClientForm
+            action={updateClientAction.bind(null, client.id)}
+            initial={{ ...client, bookingEmails: extraEmails.join("\n") }}
+            showStripe={env.stripeEnabled()}
+            submitLabel="Save changes"
+          />
         </section>
         <section className="card border-accent-soft">
           <h2 className="text-2xl text-accent">Remove client</h2>

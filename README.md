@@ -6,7 +6,7 @@ A private portal for coaching clients, styled to match [raviraman.com](https://r
 
 - **Appointments** from Cal.com, both upcoming and past. They can **cancel** a session or **change its time** by picking from your live availability.
 - **Program dates**: the start and end of their coaching program, with a progress bar.
-- **Payments & subscription** from Stripe: their plan, renewal date and recent invoices, plus a **Manage billing** button that opens the Stripe Customer Portal.
+- **Payments & subscription** from Stripe (optional, and currently off): their plan, renewal date and recent invoices, plus a **Manage billing** button that opens the Stripe Customer Portal. This section appears only when `STRIPE_SECRET_KEY` is set.
 
 **You (the admin)** get:
 
@@ -73,13 +73,25 @@ Other scripts: `npm test` (unit tests), `npm run lint`, `npm run typecheck`, `np
 
 ### One-time setup in the other services
 
-- **Stripe:** turn on the Customer Portal (Settings → Billing → Customer portal) and choose what clients may do (update card, view invoices, cancel or switch plans).
+- **Stripe (only if you turn billing on):** turn on the Customer Portal (Settings → Billing → Customer portal) and choose what clients may do (update card, view invoices, cancel or switch plans).
 - **Resend:** verify the domain you send from (for example ramancoaching.com) so sign-in emails reach inboxes.
 - **Cal.com:** nothing to configure. Clients must book with the same email you add them under. If one of them uses a different address, change their email in the portal.
 
 ## Adding clients
 
-Go to **Clients → Add a client** and enter their name and booking email. Optionally add the program name, start and end dates, and a Stripe customer ID (only needed if their Stripe email differs from their booking email). Then tell them to sign in at your portal URL with that email.
+Go to **Clients → Add a client** and enter their name and **sign-in email**. Optionally add the program name and its start and end dates. Then tell them to sign in at your portal URL with that email.
+
+### When a client's email changes
+
+A client has one **sign-in email** and any number of **other booking emails**. Cal.com sessions booked under any of these addresses show on the client's dashboard and count toward their totals in the report, and the client can cancel or reschedule them. Only the sign-in email can sign in.
+
+If a client changes jobs, edit them and replace the sign-in email with their new address. The old address is **kept as a booking email automatically**, so their history stays with them, and it can no longer be used to sign in. Changing the sign-in email also signs them out everywhere.
+
+If someone booked under an address you don't have for them, they appear under "Bookings from people who aren't clients yet" on the report. Add that address to the client's **Other booking emails**.
+
+An address can belong to only one client.
+
+When billing is turned on, the form also shows a **Stripe customer ID** field. Use it only if the client's Stripe email differs from their sign-in email.
 
 Removing a client only takes away their portal access. It doesn't touch Cal.com or Stripe.
 
@@ -89,5 +101,8 @@ Edit `src/db/schema.ts`, then run:
 
 ```bash
 npm run db:generate         # writes a new SQL migration to ./drizzle
-npm run db:migrate:local    # and db:migrate:remote when deploying
+npm run db:migrate:local
+npm run db:migrate:remote   # before pushing to main, so the live database is ready for the new code
 ```
+
+Cloudflare's automatic deploys don't run migrations, so apply them to the live database before the code that needs them ships.

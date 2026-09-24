@@ -4,7 +4,8 @@ import { Header } from "@/components/header";
 import { requireUser } from "@/lib/session";
 import { env } from "@/lib/env";
 import { CalApiError, getAvailableSlots, getBooking } from "@/lib/calcom";
-import { changeBlockedReason, isAttendee } from "@/lib/bookings";
+import { changeBlockedReason, findAttendee } from "@/lib/bookings";
+import { getClientEmails } from "@/lib/client-emails";
 import { formatDateTime, isValidTimeZone } from "@/lib/format";
 import { SlotPicker } from "./slot-picker";
 
@@ -33,9 +34,10 @@ export default async function ReschedulePage({
     if (e instanceof CalApiError && (e.status === 404 || e.status === 400)) return null;
     throw e;
   });
-  if (!booking || !isAttendee(booking, user.email)) notFound();
+  const attendee = booking && findAttendee(booking, await getClientEmails(user));
+  if (!booking || !attendee) notFound();
 
-  const attendeeTz = booking.attendees.find((a) => a.email.toLowerCase() === user.email.toLowerCase())?.timeZone;
+  const attendeeTz = attendee.timeZone;
   const timeZone = isValidTimeZone(attendeeTz) ? attendeeTz : env.adminTimeZone();
   const blocked = changeBlockedReason(booking, new Date(), env.changeCutoffHours());
 

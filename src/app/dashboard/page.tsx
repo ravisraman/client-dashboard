@@ -3,7 +3,16 @@ import { Header } from "@/components/header";
 import { requireUser } from "@/lib/session";
 import { env } from "@/lib/env";
 import { listBookings, type CalBooking } from "@/lib/calcom";
-import { changeBlockedReason, dedupeByUid, isActive, isAttendee, programProgress, splitUpcomingPast } from "@/lib/bookings";
+import {
+  changeBlockedReason,
+  dedupeByUid,
+  findAttendee,
+  isActive,
+  isAttendee,
+  programProgress,
+  splitUpcomingPast,
+} from "@/lib/bookings";
+import { getClientEmails } from "@/lib/client-emails";
 import { formatDate, formatDateTime, isValidTimeZone } from "@/lib/format";
 import { BookingActions } from "./booking-actions";
 import { BillingSection } from "./billing-section";
@@ -22,11 +31,13 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <h1 className="text-4xl sm:text-5xl">Hi {firstName} 👋</h1>
         <ProgramSection programName={user.programName} start={user.programStart} end={user.programEnd} />
         <Suspense fallback={<div className="card text-sm text-ink-soft">Loading your sessions…</div>}>
-          <AppointmentsSection email={user.email} />
+          <AppointmentsSection client={user} />
         </Suspense>
-        <Suspense fallback={<div className="card text-sm text-ink-soft">Loading billing…</div>}>
-          <BillingSection user={user} missing={billing === "missing"} />
-        </Suspense>
+        {env.stripeEnabled() && (
+          <Suspense fallback={<div className="card text-sm text-ink-soft">Loading billing…</div>}>
+            <BillingSection user={user} missing={billing === "missing"} />
+          </Suspense>
+        )}
       </main>
     </>
   );
@@ -86,16 +97,17 @@ function ProgramSection({ programName, start, end }: { programName: string | nul
   );
 }
 
-async function AppointmentsSection({ email }: { email: string }) {
+async function AppointmentsSection({ client }: { client: { id: string; email: string } }) {
+  const emails = await getClientEmails(client);
   let bookings: CalBooking[];
   try {
-    const [upcoming, unconfirmed, past] = await Promise.all([
-      listBookings({ status: "upcoming", attendeeEmail: email }),
-      listBookings({ status: "unconfirmed", attendeeEmail: email }),
-      listBookings({ status: "past", attendeeEmail: email }),
-    ]);
+    const lists = await Promise.all(
+      emails.flatMap((attendeeEmail) =>
+        (["upcoming", "unconfirmed", "past"] as const).map((status) => listBookings({ status, attendeeEmail })),
+      ),
+    );
     // Defence in depth: only ever show bookings this client actually attends.
-    bookings = dedupeByUid([...upcoming, ...unconfirmed, ...past]).filter((b) => isAttendee(b, email) && isActive(b));
+    bookings = dedupeByUid(lists.flat()).filter((b) => isAttendee(b, emails) && isActive(b));
   } catch (e) {
     console.error(e);
     return (
@@ -108,7 +120,7 @@ async function AppointmentsSection({ email }: { email: string }) {
   const cutoff = env.changeCutoffHours();
   const bookingUrl = env.bookingUrl();
   const tzOf = (b: CalBooking) => {
-    const tz = b.attendees.find((a) => a.email.toLowerCase() === email.toLowerCase())?.timeZone;
+    const tz = findAttendee(b, emails)?.timeZone;
     return isValidTimeZone(tz) ? tz : env.adminTimeZone();
   };
 

@@ -4,6 +4,7 @@ import { getDb } from "@/db";
 import { user } from "@/db/schema";
 import { listBookings } from "./calcom";
 import { buildReport } from "./bookings";
+import { getExtraEmailsByUser } from "./client-emails";
 
 export type ReportRange = { from?: string; to?: string };
 
@@ -28,5 +29,7 @@ export async function loadReport(range: ReportRange) {
     listBookings({ status: "past", ...filters }),
     listBookings({ status: "cancelled", ...filters }),
   ]);
-  return buildReport(clients, bookingLists.flat(), new Date());
+  const extra = await getExtraEmailsByUser(clients.map((c) => c.id));
+  const withEmails = clients.map((c) => ({ ...c, bookingEmails: extra.get(c.id) ?? [] }));
+  return buildReport(withEmails, bookingLists.flat(), new Date());
 }

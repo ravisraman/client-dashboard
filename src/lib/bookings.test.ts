@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { buildReport, changeBlockedReason, durationMinutes, isAttendee, programProgress, splitUpcomingPast } from "./bookings";
+import {
+  buildReport,
+  changeBlockedReason,
+  durationMinutes,
+  findAttendee,
+  isAttendee,
+  programProgress,
+  splitUpcomingPast,
+} from "./bookings";
 
 const now = new Date("2026-06-15T12:00:00Z");
 
@@ -20,6 +28,16 @@ describe("isAttendee", () => {
   it("matches case-insensitively and ignores whitespace", () => {
     expect(isAttendee(booking("a", "2026-06-20T10:00:00Z", 60, "Jane@Example.com"), " jane@example.COM ")).toBe(true);
     expect(isAttendee(booking("a", "2026-06-20T10:00:00Z", 60, "jane@example.com"), "john@example.com")).toBe(false);
+  });
+});
+
+describe("isAttendee / findAttendee with several emails", () => {
+  const b = booking("a", "2026-06-20T10:00:00Z", 60, "Jane@OldCo.com");
+  it("matches any of the client's emails", () => {
+    expect(isAttendee(b, ["jane@newco.com", "jane@oldco.com"])).toBe(true);
+    expect(isAttendee(b, ["jane@newco.com"])).toBe(false);
+    expect(findAttendee(b, ["jane@newco.com", "JANE@oldco.com"])?.email).toBe("Jane@OldCo.com");
+    expect(findAttendee(b, [])).toBeUndefined();
   });
 });
 
@@ -91,6 +109,27 @@ describe("buildReport", () => {
     expect(report.unmatched).toEqual([{ email: "stranger@example.com", name: "stranger", sessions: 1 }]);
     // Busiest client first.
     expect(report.clients[0].client.name).toBe("Ann");
+  });
+
+  it("counts bookings under a client's other booking emails, e.g. after changing jobs", () => {
+    const moved = [{ id: "9", name: "Jane", email: "jane@newco.com", bookingEmails: ["Jane@OldCo.com"] }];
+    const report = buildReport(
+      moved,
+      [
+        booking("old", "2026-05-01T10:00:00Z", 60, "jane@oldco.com"),
+        booking("new", "2026-06-20T10:00:00Z", 30, "jane@newco.com"),
+      ],
+      now,
+    );
+    expect(report.clients[0]).toMatchObject({ totalSessions: 2, totalMinutes: 90, completed: 1, upcoming: 1 });
+    expect(report.unmatched).toEqual([]);
+  });
+
+  it("counts a booking once even if two of the same client's emails attend", () => {
+    const b = booking("dup", "2026-05-01T10:00:00Z", 60, "jane@oldco.com");
+    b.attendees.push({ email: "jane@newco.com", name: "Jane", timeZone: "UTC" });
+    const report = buildReport([{ id: "9", name: "Jane", email: "jane@newco.com", bookingEmails: ["jane@oldco.com"] }], [b], now);
+    expect(report.clients[0].totalSessions).toBe(1);
   });
 
   it("credits a group session to every client attending it", () => {

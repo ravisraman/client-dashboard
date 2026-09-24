@@ -4,6 +4,8 @@ import { Header } from "@/components/header";
 import { requireAdmin } from "@/lib/session";
 import { getDb } from "@/db";
 import { user } from "@/db/schema";
+import { env } from "@/lib/env";
+import { getExtraEmailsByUser } from "@/lib/client-emails";
 import { formatDate } from "@/lib/format";
 import { programProgress } from "@/lib/bookings";
 import { createClientAction } from "./actions";
@@ -15,6 +17,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
   const admin = await requireAdmin();
   const prefill = await searchParams;
   const clients = await getDb().select().from(user).where(eq(user.role, "client")).orderBy(asc(user.name)).all();
+  const extraEmails = await getExtraEmailsByUser(clients.map((c) => c.id));
   const now = new Date();
 
   return (
@@ -34,6 +37,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
             initial={{ name: prefill.name, email: prefill.email }}
             submitLabel="Add client"
             clearOnSuccess
+            showStripe={env.stripeEnabled()}
           />
         </section>
 
@@ -61,7 +65,14 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
                 return (
                   <tr key={c.id}>
                     <td className="px-4 py-3 font-medium">{c.name}</td>
-                    <td className="px-4 py-3 text-ink-soft">{c.email}</td>
+                    <td className="px-4 py-3 text-ink-soft">
+                      {c.email}
+                      {extraEmails.get(c.id)?.map((e) => (
+                        <div key={e} className="text-xs text-ink-faint">
+                          also books as {e}
+                        </div>
+                      ))}
+                    </td>
                     <td className="px-4 py-3 text-xs text-ink-soft">
                       {c.programStart && c.programEnd ? `${formatDate(c.programStart)} – ${formatDate(c.programEnd)}` : "Not set"}
                     </td>
