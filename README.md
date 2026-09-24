@@ -4,7 +4,7 @@ A private portal for coaching clients, styled to match [raviraman.com](https://r
 
 **Clients** sign in with a one-time email link and see:
 
-- **Appointments** from Cal.com, both upcoming and past. They can **cancel** a session or **change its time** by picking from your live availability.
+- **Appointments** from Cal.com, both upcoming and past. **Change time** and **Cancel** open Cal.com's own reschedule and cancel pages in a new tab, where clients get your live availability, calendar overlay and Cal.com's confirmation emails.
 - **Program dates**: the start and end of their coaching program, with a progress bar.
 - **Payments & subscription** from Stripe (optional, and currently off): their plan, renewal date and recent invoices, plus a **Manage billing** button that opens the Stripe Customer Portal. This section appears only when `STRIPE_SECRET_KEY` is set.
 
@@ -30,8 +30,8 @@ A private portal for coaching clients, styled to match [raviraman.com](https://r
 - **Invite-only sign-in.** Only emails you add as clients (or admins) can sign in. For any other address the form shows the same message but sends no email, so it never reveals who is a client.
 - **Magic links** expire after 15 minutes, work only once, and are stored hashed. Link requests are limited to 3 per minute, and that limit is kept in D1 so it holds across Workers.
 - **Sessions** last 7 days in an HttpOnly, SameSite=Lax cookie (Secure in production).
-- **Every server action and page checks the user's role on the server.** Before any cancel or reschedule, the booking is re-read from Cal.com to confirm the signed-in client is an attendee. A client can't view or change another client's booking, even with a guessed booking ID.
-- **Late changes are blocked.** Clients can't cancel or reschedule online within `CHANGE_CUTOFF_HOURS` (default 24) of a session. They're asked to contact you instead.
+- **Every page and server action checks the user's role on the server.** A client only ever sees bookings made with one of their own emails.
+- **Late changes.** The portal hides Change time and Cancel within `CHANGE_CUTOFF_HOURS` (default 24) of a session and asks clients to contact you instead. Cal.com's own links (for example in its emails) follow your Cal.com event-type settings, so set minimum notice and late reschedule/cancel rules there to enforce them everywhere.
 - **Secrets stay on the server.** API keys never reach the browser, and card details are only ever handled on Stripe's hosted portal.
 - **Hardening.** Security headers are set (HSTS, X-Frame-Options DENY, nosniff). The CSV export guards against spreadsheet formula injection.
 
@@ -83,7 +83,7 @@ Go to **Clients → Add a client** and enter their name and **sign-in email**. O
 
 ### When a client's email changes
 
-A client has one **sign-in email** and any number of **other booking emails**. Cal.com sessions booked under any of these addresses show on the client's dashboard and count toward their totals in the report, and the client can cancel or reschedule them. Only the sign-in email can sign in.
+A client has one **sign-in email** and any number of **other booking emails**. Cal.com sessions booked under any of these addresses show on the client's dashboard and count toward their totals in the report, and the client can change or cancel them from the dashboard. Only the sign-in email can sign in.
 
 If a client changes jobs, edit them and replace the sign-in email with their new address. The old address is **kept as a booking email automatically**, so their history stays with them, and it can no longer be used to sign in. Changing the sign-in email also signs them out everywhere.
 

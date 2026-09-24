@@ -154,10 +154,16 @@ async function AppointmentsSection({ client }: { client: { id: string; email: st
                   </a>
                 )}
               </div>
-              <BookingActions uid={b.uid} title={b.title} blockedReason={changeBlockedReason(b, now, cutoff)} />
+              <BookingActions uid={b.uid} blockedReason={changeBlockedReason(b, now, cutoff)} />
             </li>
           ))}
         </ul>
+      )}
+
+      {upcoming.length > 0 && (
+        <p className="mt-3 text-xs text-ink-faint">
+          Change time and Cancel open Cal.com in a new tab. Come back and refresh this page to see the update.
+        </p>
       )}
 
       <h2 className="mt-10 text-2xl">Past sessions</h2>

@@ -3,7 +3,6 @@ import { env } from "./env";
 
 // Cal.com API v2. Docs: https://cal.com/docs/api-reference/v2
 const BOOKINGS_API_VERSION = "2024-08-13";
-const SLOTS_API_VERSION = "2024-09-04";
 
 export type CalAttendee = { name: string; email: string; timeZone: string };
 
@@ -80,47 +79,12 @@ export async function listBookings(params: ListParams): Promise<CalBooking[]> {
   return all;
 }
 
-export async function getBooking(uid: string): Promise<CalBooking> {
-  const res = await calFetch<{ data: CalBooking }>(`/v2/bookings/${encodeURIComponent(uid)}`, {
-    apiVersion: BOOKINGS_API_VERSION,
-  });
-  return res.data;
+/** Cal.com's own reschedule page for a booking (same link as in Cal.com's emails). */
+export function calRescheduleUrl(uid: string) {
+  return `${env.calAppUrl()}/reschedule/${encodeURIComponent(uid)}`;
 }
 
-export async function cancelBooking(uid: string, reason: string) {
-  await calFetch(`/v2/bookings/${encodeURIComponent(uid)}/cancel`, {
-    method: "POST",
-    apiVersion: BOOKINGS_API_VERSION,
-    body: JSON.stringify({ cancellationReason: reason }),
-  });
-}
-
-export async function rescheduleBooking(uid: string, start: string, reason: string, rescheduledBy: string) {
-  const res = await calFetch<{ data: CalBooking }>(`/v2/bookings/${encodeURIComponent(uid)}/reschedule`, {
-    method: "POST",
-    apiVersion: BOOKINGS_API_VERSION,
-    body: JSON.stringify({ start, reschedulingReason: reason, rescheduledBy }),
-  });
-  return res.data;
-}
-
-/** Available start times (ISO strings) grouped by local date, for rescheduling a booking. */
-export async function getAvailableSlots(opts: {
-  eventTypeId: number;
-  start: string;
-  end: string;
-  timeZone: string;
-  bookingUidToReschedule: string;
-}): Promise<Record<string, string[]>> {
-  const qs = new URLSearchParams({
-    eventTypeId: String(opts.eventTypeId),
-    start: opts.start,
-    end: opts.end,
-    timeZone: opts.timeZone,
-    bookingUidToReschedule: opts.bookingUidToReschedule,
-  });
-  const res = await calFetch<{ data: Record<string, { start: string }[]> }>(`/v2/slots?${qs}`, {
-    apiVersion: SLOTS_API_VERSION,
-  });
-  return Object.fromEntries(Object.entries(res.data).map(([day, slots]) => [day, slots.map((s) => s.start)]));
+/** Cal.com's own cancel page for a booking. */
+export function calCancelUrl(uid: string) {
+  return `${env.calAppUrl()}/booking/${encodeURIComponent(uid)}?cancel=true`;
 }
